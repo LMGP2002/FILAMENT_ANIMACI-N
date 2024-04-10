@@ -61,6 +61,8 @@ class MainActivity : AppCompatActivity() {
 
             val posicionesEncontradas = mutableListOf<Int>()
 
+            posicionesEncontradas.add(0)
+
             // Recorre el arreglo de búsqueda
             for (palabra in palabrasBuscadas) {
                 // Busca la palabra en el arreglo de animaciones
@@ -71,34 +73,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            Log.i("posiciones", ""+posicionesEncontradas)
+            customViewer.activeAnimation(true, posicionesEncontradas.toIntArray());
 
 
-
-
-            //-----------------------
-            val handler = Handler(Looper.getMainLooper())
-            val delay: Long = 1600
-            var index = 0
-
-            val runnable = object : Runnable {
-                override fun run() {
-                    if (posicionesEncontradas.isNotEmpty()) {
-
-                        // Calcular la animación previa y su tiempo correspondiente
-                        val animacionPrevia = if (index == 0) posicionesEncontradas.last() else posicionesEncontradas[index - 1]
-                        val tiempoAnimacionPrevia = customViewer.getAnimationDuration(animacionPrevia)
-                        customViewer.changeAnimation(posicionesEncontradas[index])
-                        customViewer.applyCrossFade(animacionPrevia, tiempoAnimacionPrevia, 0f)
-
-                        index = (index + 1) % posicionesEncontradas.size // Avanzar al siguiente índice en bucle
-                        handler.postDelayed(this, delay)
-                    }
-                }
-            }
-
-// Iniciar la reproducción de las posiciones
-            handler.postDelayed(runnable, delay)
 
 
             if (editText.text.toString().trim().isNotEmpty()) {
@@ -138,7 +115,7 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun doInBackgroundAsync(text: String): String =
         withContext(Dispatchers.IO) {
-            val url = URL("http://192.168.0.16:5000/analizar?text=$text")
+            val url = URL("http://192.168.0.9:5000/analizar?text=$text")
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
 

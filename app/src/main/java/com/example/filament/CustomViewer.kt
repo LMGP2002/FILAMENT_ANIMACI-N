@@ -22,7 +22,9 @@ class CustomViewer {
 
     private lateinit var choreographer: Choreographer
     private lateinit var modelViewer: ModelViewer
-    private var currentAnimationIndex = 0
+    private var startAnimationSequence = false
+    private var animationSequence = intArrayOf()
+
 
 
     fun loadEntity() {
@@ -115,31 +117,70 @@ class CustomViewer {
         return modelViewer.animator?.getAnimationDuration(animationIndex) ?: 0.0f
     }
 
-    fun changeAnimation(index:Int){
-        currentAnimationIndex=index;
-    }
-    fun applyCrossFade(animationIndex: Int, previousAnimTime: Float, alpha:Float){
-        modelViewer.animator?.applyCrossFade(animationIndex,previousAnimTime,alpha)
+    fun activeAnimation(boolean: Boolean,array: IntArray){
+        startAnimationSequence=boolean;
+        animationSequence = array
+        Log.i("array", animationSequence.joinToString())
     }
 
+
+
     private val frameCallback = object : Choreographer.FrameCallback {
-        private val startTime = System.nanoTime()
+        private var baseTime = System.nanoTime()
+        private var crossFadeAlpha = 0.0f
+        private val crossFadeTime = 0.5f
+        private var previousAnimationIndex = -1
+        private var currentAnimationIndex = 0
+        private var isTransitioning = false
+        private var animationStartTime = baseTime
+        private val animationDuration = 1700000000L
+
         override fun doFrame(currentTime: Long) {
-            val seconds = (currentTime - startTime).toDouble() / 1_000_000_000
+            val seconds = (currentTime - baseTime).toDouble() / 1_000_000_000
             choreographer.postFrameCallback(this)
             modelViewer.animator?.apply {
-                if (animationCount > 0) {
-                    applyAnimation(currentAnimationIndex, seconds.toFloat())
-                    //applyCrossFade(currentAnimationIndex, getAnimationDuration(currentAnimationIndex), 1.0f)
-                    //Log.i("duracion", ""+getAnimationDuration(currentAnimationIndex))
+                val animationElapsedTime = currentTime - animationStartTime
+
+                if (!startAnimationSequence) {
+                    applyAnimation(0, (currentTime - animationStartTime).toFloat() / animationDuration)
+                    updateBoneMatrices()
+                } else {
+
+                    if (!isTransitioning) {
+                        applyAnimation(animationSequence[currentAnimationIndex], (currentTime - animationStartTime).toFloat() / animationDuration)
+                        updateBoneMatrices()
+                    }
+
+                    if (animationElapsedTime >= animationDuration) {
+                        previousAnimationIndex = currentAnimationIndex
+                        currentAnimationIndex = (currentAnimationIndex + 1) % animationSequence.size
+                        crossFadeAlpha = 0.0f
+                        isTransitioning = true
+                        animationStartTime = currentTime
+
+                        Log.i("Animation", "Nuevo índice de animación: ${animationSequence[currentAnimationIndex]}")
+                        Log.i("Animation", "Secuencia de animación actual: ${animationSequence.contentToString()}")
+                    }
+
+                    if (isTransitioning) {
+                        crossFadeAlpha += seconds.toFloat() / crossFadeTime
+                        crossFadeAlpha = crossFadeAlpha.coerceIn(0.0f, 1.0f)
+
+                        applyAnimation(animationSequence[currentAnimationIndex], (currentTime - animationStartTime).toFloat() / animationDuration)
+                        applyCrossFade(animationSequence[previousAnimationIndex], (currentTime - animationStartTime).toFloat() / animationDuration, 1.0f - crossFadeAlpha)
+
+                        updateBoneMatrices()
+
+                        if (crossFadeAlpha == 1.0f) {
+                            isTransitioning = false
+                        }
+                    }
                 }
-                updateBoneMatrices()
             }
+
             modelViewer.render(currentTime)
         }
     }
-
-
 
 
 
